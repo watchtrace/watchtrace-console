@@ -1,0 +1,7 @@
+dist
+node_modules
+playwright-report
+test-results
+src/api/generated.ts
+openapi/customer-v1.openapi.yaml
+codex/
