@@ -35,6 +35,7 @@ npm run typecheck
 npm run test
 npm run contract:check
 npm run build
+npm run test:container
 npx playwright install chromium
 npm run test:browser
 ```
@@ -68,4 +69,4 @@ SSE messages are refresh hints only. Ordinary authorized APIs remain the source 
 
 ## Build artifact
 
-`npm run build` creates a route-split static build in `dist/` with `build.json` recording frontend version `1.0.0` and compatible API contract `1.0.0`. CI uploads it as the versioned `watchtrace-console-v1.0.0` artifact. The Dockerfile packages the same build behind Nginx; API/SSE proxying belongs to the deferred deployment configuration.
+`npm run build` creates a route-split static build in `dist/` with `build.json` recording frontend version `1.0.0` and compatible API contract `1.0.0`. CI uploads it as the versioned `watchtrace-console-v1.0.0` artifact. The Dockerfile packages the same build behind Nginx. In a deployment stack, that Nginx service is the single browser-facing gateway: it serves React routes and proxies `/api/v1/` (including unbuffered SSE streams) to the private `api:8080` Compose service.

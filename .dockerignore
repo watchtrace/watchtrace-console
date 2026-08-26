@@ -1,6 +1,14 @@
 node_modules
 dist
 .git
+.github
+.env
+.env.*
+Dockerfile
+README.md
+e2e
+scripts
+tests
 playwright-report
 test-results
 coverage

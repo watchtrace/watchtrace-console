@@ -19,6 +19,7 @@
     "test:watch": "vitest",
     "test:contract": "vitest run src/api/contract.test.ts",
     "test:browser": "playwright test",
+    "test:container": "sh scripts/test-container.sh",
     "test:browser:real": "sh scripts/test-browser-real.sh",
     "test:browser:update": "playwright test --update-snapshots",
     "contract:generate": "openapi-typescript openapi/customer-v1.openapi.yaml -o src/api/generated.ts",
