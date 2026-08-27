@@ -49,10 +49,18 @@ while [ "$attempt" -lt 30 ]; do
     sleep 1
 done
 
-proxy_response=$(curl --fail --silent --show-error --max-time 5 \
-    --header 'Host: watchtrace.example.test' \
-    --header 'X-Forwarded-Proto: https' \
-    "http://$published_address/api/v1/proxy-check?value=1")
+attempt=0
+proxy_response=
+while [ "$attempt" -lt 30 ]; do
+    if proxy_response=$(curl --fail --silent --max-time 2 \
+        --header 'Host: watchtrace.example.test' \
+        --header 'X-Forwarded-Proto: https' \
+        "http://$published_address/api/v1/proxy-check?value=1" 2>/dev/null); then
+        break
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+done
 case "$proxy_response" in
     *'"host":"watchtrace.example.test"'*'"forwardedProto":"https"'*'"url":"/api/v1/proxy-check?value=1"'*) ;;
     *)
