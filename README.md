@@ -70,3 +70,14 @@ SSE messages are refresh hints only. Ordinary authorized APIs remain the source 
 ## Build artifact
 
 `npm run build` creates a route-split static build in `dist/` with `build.json` recording frontend version `1.0.0` and compatible API contract `1.0.0`. CI uploads it as the versioned `watchtrace-console-v1.0.0` artifact. The Dockerfile packages the same build behind Nginx. In a deployment stack, that Nginx service is the single browser-facing gateway: it serves React routes and proxies `/api/v1/` (including unbuffered SSE streams) to the private `api:8080` Compose service.
+
+## Continuous deployment
+
+On a push to `main`, CI verifies the console and publishes the multi-platform
+GHCR image with both the movable `main` tag and an immutable commit tag. When
+the repository variable `COOLIFY_DEPLOY_ENABLED` is `true`, the final job calls
+the authenticated WatchTrace Coolify deploy webhook using the repository
+secrets `COOLIFY_DEPLOY_WEBHOOK` and `COOLIFY_TOKEN`. Coolify's immediate Git
+auto-deploy must remain disabled so deployment cannot start before the tested
+image has been published. Setup and rollback instructions live in the backend
+repository's `deploy/coolify/README.md`.
