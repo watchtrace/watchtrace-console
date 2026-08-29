@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { realtimeInternals } from './useRealtime';
 
 describe('SSE refresh hints', () => {
+  afterEach(() => vi.useRealTimers());
+
   it('parses IDs and safe resource identifiers without trusting event data as state', () => {
     expect(
       realtimeInternals.parseEvent(
@@ -47,5 +49,18 @@ describe('SSE refresh hints', () => {
         resourceId: 'env-1',
       },
     ]);
+  });
+
+  it('coalesces a replay burst into one API refresh', () => {
+    vi.useFakeTimers();
+    const refresh = vi.fn();
+    const scheduler = realtimeInternals.createRefreshScheduler(refresh);
+
+    for (let event = 0; event < 100; event += 1) scheduler.schedule();
+    expect(refresh).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(100);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    scheduler.cancel();
   });
 });

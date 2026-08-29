@@ -17,6 +17,9 @@ export function useRealtime(environmentId: string | undefined) {
     let pollTimer = 0;
     let reconnectAttempt = 0;
     let currentStatus: LiveStatus = 'connecting';
+    const cursorKey = `watchtrace-event-cursor:${environmentId}`;
+    const storedCursor = Number(window.sessionStorage.getItem(cursorKey));
+    lastEventId.current = Number.isSafeInteger(storedCursor) && storedCursor > 0 ? storedCursor : 0;
 
     const updateStatus = (next: LiveStatus) => {
       currentStatus = next;
@@ -27,6 +30,11 @@ export function useRealtime(environmentId: string | undefined) {
       queryClient.invalidateQueries({
         predicate: (query) => query.queryKey.includes(environmentId),
       });
+
+    // One SSE response may replay as many as 100 durable hints. They all mean
+    // the same thing to the client: reload current API state. Coalesce a burst
+    // into one reload instead of issuing one request per historical event.
+    const refreshScheduler = createRefreshScheduler(() => void refresh());
 
     const startPolling = () => {
       updateStatus('polling');
@@ -50,7 +58,8 @@ export function useRealtime(environmentId: string | undefined) {
           stream,
           (event) => {
             lastEventId.current = Math.max(lastEventId.current, event.id);
-            void refresh();
+            window.sessionStorage.setItem(cursorKey, String(lastEventId.current));
+            refreshScheduler.schedule();
           },
           controller.signal,
         );
@@ -81,6 +90,7 @@ export function useRealtime(environmentId: string | undefined) {
     return () => {
       controller.abort();
       window.clearTimeout(reconnectTimer);
+      refreshScheduler.cancel();
       window.clearInterval(pollTimer);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('online', onVisibility);
@@ -88,6 +98,19 @@ export function useRealtime(environmentId: string | undefined) {
   }, [environmentId, queryClient]);
 
   return status;
+}
+
+function createRefreshScheduler(refresh: () => void, delayMs = 100) {
+  let timer = 0;
+  return {
+    schedule() {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(refresh, delayMs);
+    },
+    cancel() {
+      window.clearTimeout(timer);
+    },
+  };
 }
 
 async function consumeSse(
@@ -135,4 +158,4 @@ function parseEvent(block: string): RefreshHint | null {
   return { id, type, resourceType: detail.resource_type, resourceId: detail.resource_id };
 }
 
-export const realtimeInternals = { consumeSse, parseEvent };
+export const realtimeInternals = { consumeSse, createRefreshScheduler, parseEvent };
