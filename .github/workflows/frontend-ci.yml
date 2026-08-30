@@ -175,7 +175,8 @@ jobs:
         run: |
           ./scripts/coolify-deploy.sh deploy-image \
             "$COOLIFY_FRONTEND_UUID" "$FRONTEND_IMAGE" \
-            "$(tr -d '\r\n' < .release/watchtrace-console.digest)"
+            "$(tr -d '\r\n' < .release/watchtrace-console.digest)" \
+            "$GITHUB_SHA"
 
       - name: Run public production acceptance checks
         run: ./scripts/verify-production-deployment.sh "$WATCHTRACE_PUBLIC_URL"

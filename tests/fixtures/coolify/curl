@@ -15,10 +15,10 @@ done
 path=${url#https://coolify.example.test/api/v1}
 case "$method:$path" in
   GET:/applications/frontend-app)
-    jq -cn --arg tag "$(cat "$MOCK_CURL_STATE")" '{uuid:"frontend-app",docker_registry_image_name:"ghcr.io/watchtrace/watchtrace-console",docker_registry_image_tag:$tag}'
+    jq -c '{uuid:"frontend-app",docker_registry_image_name:"ghcr.io/watchtrace/watchtrace-console",docker_registry_image_tag:.tag,git_commit_sha:.commit}' "$MOCK_CURL_STATE"
     ;;
   PATCH:/applications/frontend-app)
-    printf '%s\n' "$(printf '%s' "$body" | jq -er '.docker_registry_image_tag')" > "$MOCK_CURL_STATE"
+    printf '%s' "$body" | jq -ce '{tag:.docker_registry_image_tag,commit:.git_commit_sha}' > "$MOCK_CURL_STATE"
     printf '{"uuid":"frontend-app"}\n'
     ;;
   POST:/deploy)
@@ -26,7 +26,7 @@ case "$method:$path" in
     jq -cn --arg uuid "$uuid" '{deployments:[{resource_uuid:$uuid,deployment_uuid:("deployment-"+$uuid)}]}'
     ;;
   GET:/deployments/deployment-frontend-app)
-    jq -cn --arg tag "$(cat "$MOCK_CURL_STATE")" '{status:"finished",docker_registry_image_tag:$tag}'
+    jq -c '{status:"finished",docker_registry_image_tag:null,commit:.commit}' "$MOCK_CURL_STATE"
     ;;
   *) echo "unexpected mock request: $method $path" >&2; exit 22 ;;
 esac
