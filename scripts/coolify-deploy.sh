@@ -5,7 +5,7 @@ usage() {
   cat >&2 <<'EOF'
 Usage:
   coolify-deploy.sh inspect-image APPLICATION_UUID IMAGE_NAME
-  coolify-deploy.sh deploy-image APPLICATION_UUID IMAGE_NAME sha256:DIGEST GIT_COMMIT_SHA
+  coolify-deploy.sh deploy-image APPLICATION_UUID IMAGE_NAME sha256:DIGEST GIT_COMMIT_SHA GIT_REPOSITORY_URL GIT_BRANCH
 
 Required environment variables:
   COOLIFY_API_URL   Trusted HTTPS Coolify origin, with or without /api/v1
@@ -58,6 +58,13 @@ validate_commit() {
   case "${#1}" in 40|64) ;; *) fail "Git commit SHA must contain 40 or 64 hexadecimal characters." ;; esac
   case "$1" in *[!0-9a-f]*) fail "Git commit SHA must use lowercase hexadecimal characters." ;; esac
 }
+validate_repository() {
+  case "$1" in https://github.com/*/*) ;; *) fail "Git repository must be a full https://github.com/OWNER/REPOSITORY URL." ;; esac
+  case "$1" in *[?#]*) fail "Git repository URL must not contain a query string or fragment." ;; esac
+}
+validate_branch() {
+  case "$1" in ''|*[!A-Za-z0-9._/-]*) fail "Git branch contains unsupported characters." ;; esac
+}
 tag_to_reference() {
   case "$2" in sha256-*) printf '%s@sha256:%s' "$1" "${2#sha256-}" ;; sha256:*) printf '%s@%s' "$1" "$2" ;; '') printf '%s:<unset>' "$1" ;; *) printf '%s:%s' "$1" "$2" ;; esac
 }
@@ -69,6 +76,8 @@ inspect_image() {
   actual_image=$(printf '%s' "$application_json" | jq -r '.docker_registry_image_name // empty')
   actual_tag=$(printf '%s' "$application_json" | jq -r '.docker_registry_image_tag // empty')
   actual_commit=$(printf '%s' "$application_json" | jq -r '.git_commit_sha // empty')
+  actual_repository=$(printf '%s' "$application_json" | jq -r '.git_repository // empty')
+  actual_branch=$(printf '%s' "$application_json" | jq -r '.git_branch // empty')
   [ "$actual_uuid" = "$1" ] || fail "Coolify returned a different application than $1."
   [ "$actual_image" = "$2" ] || fail "Application $1 uses '$actual_image', expected '$2'."
   current_reference=$(tag_to_reference "$actual_image" "$actual_tag")
@@ -100,13 +109,17 @@ case "$operation" in
     printf '%s\n' "$current_reference"
     ;;
   deploy-image)
-    [ "$#" -eq 4 ] || usage
-    uuid=$1; image=$2; digest=$3; commit=$4
+    [ "$#" -eq 6 ] || usage
+    uuid=$1; image=$2; digest=$3; commit=$4; repository=$5; branch=$6
     fail_if_invalid_uuid "$uuid"; validate_image "$image"; hex=$(digest_hex "$digest"); validate_commit "$commit"
+    validate_repository "$repository"; validate_branch "$branch"
     desired_tag="sha256-$hex"; desired_reference="$image@sha256:$hex"
     inspect_image "$uuid" "$image"; previous_reference=$current_reference
-    update_body=$(jq -cn --arg tag "$desired_tag" --arg commit "$commit" '{docker_registry_image_tag: $tag, git_commit_sha: $commit}')
-    api_request PATCH "/applications/$uuid" "$update_body" >/dev/null || fail "Could not update the image digest and source commit for $uuid."
+    update_body=$(jq -cn \
+      --arg tag "$desired_tag" --arg commit "$commit" \
+      --arg repository "$repository" --arg branch "$branch" \
+      '{docker_registry_image_tag: $tag, git_commit_sha: $commit, git_repository: $repository, git_branch: $branch}')
+    api_request PATCH "/applications/$uuid" "$update_body" >/dev/null || fail "Could not update the image and Git metadata for $uuid."
     trigger_and_wait "$uuid"
     deployed_tag=$(printf '%s' "$deployment_json" | jq -r '.docker_registry_image_tag // empty')
     [ -z "$deployed_tag" ] || [ "$deployed_tag" = "$desired_tag" ] || fail "Deployment $deployment_uuid reports tag '$deployed_tag', expected '$desired_tag'."
@@ -115,8 +128,10 @@ case "$operation" in
     inspect_image "$uuid" "$image"
     [ "$current_reference" = "$desired_reference" ] || fail "Coolify is configured for '$current_reference', expected '$desired_reference'."
     [ "$actual_commit" = "$commit" ] || fail "Coolify is configured for commit '$actual_commit', expected '$commit'."
+    [ "$actual_repository" = "$repository" ] || fail "Coolify is configured for repository '$actual_repository', expected '$repository'."
+    [ "$actual_branch" = "$branch" ] || fail "Coolify is configured for branch '$actual_branch', expected '$branch'."
     write_output previous_reference "$previous_reference"; write_output deployed_reference "$desired_reference"; write_output deployment_uuid "$deployment_uuid"
-    summary "- Deployed \`$desired_reference\` to \`$uuid\` (deployment \`$deployment_uuid\`)."
+    summary "- Deployed [$commit]($repository/commit/$commit) as \`$desired_reference\` to \`$uuid\` (deployment \`$deployment_uuid\`)."
     ;;
   *) usage ;;
 esac

@@ -15,10 +15,10 @@ done
 path=${url#https://coolify.example.test/api/v1}
 case "$method:$path" in
   GET:/applications/frontend-app)
-    jq -c '{uuid:"frontend-app",docker_registry_image_name:"ghcr.io/watchtrace/watchtrace-console",docker_registry_image_tag:.tag,git_commit_sha:.commit}' "$MOCK_CURL_STATE"
+    jq -c '{uuid:"frontend-app",docker_registry_image_name:"ghcr.io/watchtrace/watchtrace-console",docker_registry_image_tag:.tag,git_commit_sha:.commit,git_repository:.repository,git_branch:.branch}' "$MOCK_CURL_STATE"
     ;;
   PATCH:/applications/frontend-app)
-    printf '%s' "$body" | jq -ce '{tag:.docker_registry_image_tag,commit:.git_commit_sha}' > "$MOCK_CURL_STATE"
+    printf '%s' "$body" | jq -ce '{tag:.docker_registry_image_tag,commit:.git_commit_sha,repository:.git_repository,branch:.git_branch}' > "$MOCK_CURL_STATE"
     printf '{"uuid":"frontend-app"}\n'
     ;;
   POST:/deploy)

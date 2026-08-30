@@ -176,7 +176,9 @@ jobs:
           ./scripts/coolify-deploy.sh deploy-image \
             "$COOLIFY_FRONTEND_UUID" "$FRONTEND_IMAGE" \
             "$(tr -d '\r\n' < .release/watchtrace-console.digest)" \
-            "$GITHUB_SHA"
+            "$GITHUB_SHA" \
+            "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            "$GITHUB_REF_NAME"
 
       - name: Run public production acceptance checks
         run: ./scripts/verify-production-deployment.sh "$WATCHTRACE_PUBLIC_URL"
@@ -186,16 +188,19 @@ jobs:
           PREVIOUS_REFERENCE: ${{ steps.inspect_frontend.outputs.current_reference }}
           FRONTEND_REFERENCE: ${{ steps.deploy_frontend.outputs.deployed_reference }}
           DEPLOYMENT_UUID: ${{ steps.deploy_frontend.outputs.deployment_uuid }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           jq -n \
             --arg repository "$GITHUB_REPOSITORY" \
             --arg commit "$GITHUB_SHA" \
+            --arg commit_message "$COMMIT_MESSAGE" \
+            --arg commit_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}" \
             --arg workflow_run "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg previous "$PREVIOUS_REFERENCE" \
             --arg current "$FRONTEND_REFERENCE" \
             --arg deployment "$DEPLOYMENT_UUID" \
-            '{repository:$repository,commit:$commit,workflow_run:$workflow_run,timestamp:$timestamp,environment:"prod",image:{previous:$previous,current:$current},coolify_deployment:$deployment}' \
+            '{repository:$repository,commit:$commit,commit_message:$commit_message,commit_url:$commit_url,workflow_run:$workflow_run,timestamp:$timestamp,environment:"prod",image:{previous:$previous,current:$current},coolify_deployment:$deployment}' \
             > production-release.json
 
       - name: Retain production release record
