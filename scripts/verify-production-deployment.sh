@@ -23,9 +23,12 @@ curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
 [ "$(tr -d '\r\n' < "$temporary_directory/health")" = "ok" ]
 
 curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
-  --connect-timeout 10 --max-time 30 --output "$temporary_directory/index.html" "$public_url/"
+  --connect-timeout 10 --max-time 30 --dump-header "$temporary_directory/index.headers" \
+  --output "$temporary_directory/index.html" "$public_url/"
 grep -F '<div id="root"></div>' "$temporary_directory/index.html" >/dev/null
 grep -F '<title>WatchTrace</title>' "$temporary_directory/index.html" >/dev/null
+grep -i '^x-watchtrace-frontend:[[:space:]]*watchtrace-console' \
+  "$temporary_directory/index.headers" >/dev/null
 
 auth_status=$(curl --silent --show-error --proto '=https' --tlsv1.2 \
   --connect-timeout 10 --max-time 30 --output "$temporary_directory/auth.json" \

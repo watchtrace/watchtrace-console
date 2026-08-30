@@ -40,6 +40,8 @@ export function AuthLayout() {
           <Outlet />
         </Paper>
         <Text ta="center" size="xs" c="dimmed" mt="lg">
+          Production monitoring console
+          <br />
           By continuing, you confirm you are authorized to monitor your configured targets.
           <br />
           <Anchor component={Link} to="/login" size="xs">

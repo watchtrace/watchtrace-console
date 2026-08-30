@@ -49,6 +49,14 @@ while [ "$attempt" -lt 30 ]; do
     sleep 1
 done
 
+if ! curl --fail --silent --show-error --max-time 2 \
+    --dump-header - --output /dev/null \
+    "http://$published_address/" |
+    grep -i '^X-WatchTrace-Frontend:[[:space:]]*watchtrace-console' >/dev/null; then
+    echo "Frontend response did not identify the console service." >&2
+    exit 1
+fi
+
 attempt=0
 proxy_response=
 while [ "$attempt" -lt 30 ]; do

@@ -64,6 +64,7 @@ test('incident acknowledgement, polling fallback, and session expiry recover saf
   await page.reload();
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('heading', { name: 'Sign in to your console' })).toBeVisible();
+  await expect(page.getByText('Production monitoring console')).toBeVisible();
 });
 
 test('viewer restrictions are clear and dashboard is accessible and responsive', async ({
