@@ -73,11 +73,18 @@ SSE messages are refresh hints only. Ordinary authorized APIs remain the source 
 
 ## Continuous deployment
 
-On a push to `main`, CI verifies the console and publishes the multi-platform
-GHCR image with both the movable `main` tag and an immutable commit tag. When
-the repository variable `COOLIFY_DEPLOY_ENABLED` is `true`, the final job calls
-the authenticated WatchTrace Coolify deploy webhook using the repository
-secrets `COOLIFY_DEPLOY_WEBHOOK` and `COOLIFY_TOKEN`. Coolify's immediate Git
-auto-deploy must remain disabled so deployment cannot start before the tested
-image has been published. Setup and rollback instructions live in the backend
-repository's `deploy/coolify/README.md`.
+On a push to protected `main`, CI verifies the console, publishes its Linux
+AMD64/ARM64 GHCR image, and records the immutable registry digest. When the
+repository variable `COOLIFY_DEPLOY_ENABLED` is `true`, the `prod` deployment
+job updates only the `watchtrace-frontend` Coolify application identified by
+`COOLIFY_FRONTEND_UUID`. It waits for Coolify to finish, verifies the saved
+digest and public frontend/API route, and retains a JSON release record with the
+previous and current references.
+
+`COOLIFY_API_URL` and `WATCHTRACE_PUBLIC_URL` are repository variables;
+`COOLIFY_TOKEN` is a secret in the GitHub `prod` environment. The token needs
+Coolify `read`, `write`, and `deploy` permissions. Pull requests test only and
+never receive this secret. Coolify's Git-source auto-deploy remains disabled so
+deployment cannot start before GitHub has tested and published the image.
+Detailed setup, cutover, and rollback instructions live in the backend
+repository's `docs/CI_CD_AND_PRODUCTION_DEPLOYMENT.md`.
