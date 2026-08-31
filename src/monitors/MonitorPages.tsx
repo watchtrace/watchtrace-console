@@ -36,7 +36,7 @@ import {
   IconTestPipe,
   IconTrash,
 } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { monitorApi } from '../api/endpoints';
 import type { Monitor, MonitorMutation } from '../api/types';
@@ -425,18 +425,19 @@ export function MonitorDetailPage() {
   const tenant = useTenant();
   const queryClient = useQueryClient();
   const [preset, setPreset] = useState<'24h' | '7d' | '30d'>('24h');
-  const range = useMemo(() => timeRange(preset), [preset]);
   const monitor = useQuery({
     queryKey: ['monitor', tenant.environment.id, monitorId],
     queryFn: () => monitorApi.detail(tenant.environment.id, monitorId!),
   });
   const report = useQuery({
     queryKey: ['report', tenant.environment.id, monitorId, preset],
-    queryFn: () => monitorApi.report(tenant.environment.id, monitorId!, range),
+    // Build the rolling window for every request. Capturing it when the page
+    // mounts permanently excludes checks completed after that timestamp.
+    queryFn: () => monitorApi.report(tenant.environment.id, monitorId!, timeRange(preset)),
   });
   const checks = useQuery({
     queryKey: ['checks', tenant.environment.id, monitorId, preset],
-    queryFn: () => monitorApi.checks(tenant.environment.id, monitorId!, range),
+    queryFn: () => monitorApi.checks(tenant.environment.id, monitorId!, timeRange(preset)),
   });
   const action = useMutation({
     mutationFn: async (kind: 'pause' | 'resume' | 'test') => {

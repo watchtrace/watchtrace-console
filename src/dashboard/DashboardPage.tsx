@@ -30,10 +30,9 @@ import { StatusKey } from '../shared/status';
 
 export function DashboardPage() {
   const { environment } = useTenant();
-  const range = timeRange('24h');
   const dashboard = useQuery({
-    queryKey: ['dashboard', environment.id, range.from.slice(0, 13)],
-    queryFn: () => monitoringApi.dashboard(environment.id, range),
+    queryKey: ['dashboard', environment.id, '24h'],
+    queryFn: () => monitoringApi.dashboard(environment.id, timeRange('24h')),
     refetchInterval: 15_000,
   });
 
